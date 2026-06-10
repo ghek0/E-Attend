@@ -5,6 +5,12 @@
         "Pop-Location": true,
         "copilot": true,
         ".": true,
-        "team": true
-    }
+        "team": true,
+        "flutter": true,
+        "firebase": true,
+        "Get-Process": true
+    },
+    "dart.hotReloadOnSave": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000
 }

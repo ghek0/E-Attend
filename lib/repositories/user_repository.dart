@@ -75,8 +75,11 @@ class UserRepository {
     final doc = await _firestore.collection('users').doc(uid).get();
     final data = doc.data();
     if (data == null || data['leave_balance'] == null) {
-      // Default: 12 annual leave days per year (Indonesian standard)
-      return {'annual': 12, 'emergency': 3, 'sick': 30};
+      // Defaults:
+      // annual: 12 days remaining (counts down when used)
+      // special: counts up from 0 when used
+      // sick: counts up from 0 when used
+      return {'annual': 12, 'special': 0, 'sick': 0};
     }
     return Map<String, int>.from(data['leave_balance']);
   }

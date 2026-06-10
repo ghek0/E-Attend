@@ -9,6 +9,7 @@ import '../profile/profile.dart';
 import '../requests/request_form.dart';
 import '../requests/overtime_request.dart';
 import '../requests/request_history.dart';
+import '../requests/issue_report.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -87,6 +88,38 @@ class _SchedulePageState extends State<SchedulePage> {
           }(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Failed to load schedule',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${snapshot.error}',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey[600]),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            if (!snapshot.hasData || snapshot.data == null) {
               return const Center(child: CircularProgressIndicator());
             }
 
@@ -214,6 +247,21 @@ class _SchedulePageState extends State<SchedulePage> {
                             MaterialPageRoute(
                                 builder: (context) =>
                                     const OvertimeRequestPage()),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading:
+                            const Icon(Icons.error_outline, color: Colors.red),
+                        title: const Text('Report Issue'),
+                        subtitle: const Text('For store-related concerns'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const IssueReportPage()),
                           );
                         },
                       ),

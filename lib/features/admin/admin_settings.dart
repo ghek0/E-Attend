@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../repositories/settings_repository.dart';
 
 class AdminSettingsPage extends StatefulWidget {
@@ -319,6 +320,77 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.my_location, size: 18),
+                      label: const Text('Use My Current Location'),
+                      onPressed: () async {
+                        try {
+                          bool serviceEnabled =
+                              await Geolocator.isLocationServiceEnabled();
+                          if (!serviceEnabled) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Please enable GPS location services.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          LocationPermission permission =
+                              await Geolocator.checkPermission();
+                          if (permission == LocationPermission.denied) {
+                            permission =
+                                await Geolocator.requestPermission();
+                          }
+                          if (permission == LocationPermission.denied ||
+                              permission ==
+                                  LocationPermission.deniedForever) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Location permission is required.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          final pos = await Geolocator.getCurrentPosition(
+                            locationSettings: const LocationSettings(
+                                accuracy: LocationAccuracy.high),
+                          );
+                          if (!mounted) return;
+                          setState(() {
+                            _officeLatController.text =
+                                pos.latitude.toStringAsFixed(6);
+                            _officeLngController.text =
+                                pos.longitude.toStringAsFixed(6);
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Location set to your current position!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('Failed to get location: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(

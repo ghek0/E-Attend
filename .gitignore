@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# AI agent definitions & config (local-only, not for GitHub)
+.github/agents/
+.claude/

@@ -20,9 +20,8 @@ class _RequestFormPageState extends State<RequestFormPage> {
   String _selectedType = 'Annual Leave'; // Annual Leave
   final List<String> _types = [
     'Annual Leave',
-    'Emergency Leave',
-    'Medical Certificate',
-    'Overtime'
+    'Special Leave',
+    'Sick Leave',
   ];
 
   final TextEditingController _dateController = TextEditingController();
@@ -76,14 +75,6 @@ class _RequestFormPageState extends State<RequestFormPage> {
                     .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                     .toList(),
                 onChanged: (val) {
-                  if (val == 'Overtime') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const OvertimeRequestPage()),
-                    );
-                    return;
-                  }
                   setState(() => _selectedType = val!);
                 },
                 decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -187,7 +178,7 @@ class _LeaveBalanceBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Annual: ${balance['annual'] ?? 0}d  •  '
-                  'Emergency: ${balance['emergency'] ?? 0}d  •  '
+                  'Special: ${balance['special'] ?? 0}d  •  '
                   'Sick: ${balance['sick'] ?? 0}d',
                   style: const TextStyle(
                     fontSize: 13,

@@ -11,7 +11,6 @@ import '../../repositories/settings_repository.dart';
 import '../../repositories/shift_repository.dart';
 import '../../repositories/user_repository.dart';
 import '../../services/auth_service.dart';
-import '../../providers/theme_provider.dart';
 import '../../utils/stats_helper.dart';
 import '../home/home.dart';
 import '../schedule/schedule.dart';
@@ -215,7 +214,34 @@ class _ProfilePageState extends State<ProfilePage> {
             return (config, shift);
           }(),
           builder: (context, settingsSnapshot) {
-            if (!settingsSnapshot.hasData) {
+            if (settingsSnapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Failed to load work configuration',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${settingsSnapshot.error}',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey[600]),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            if (!settingsSnapshot.hasData || settingsSnapshot.data == null) {
               return const Center(child: CircularProgressIndicator());
             }
             final config = settingsSnapshot.data!.$1;
@@ -397,104 +423,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
 
-                      // Attendance History List
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text("Recent Activity",
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: sortedDocs.length,
-                        itemBuilder: (context, index) {
-                          final data =
-                              sortedDocs[index].data() as Map<String, dynamic>;
-                          final bool isCheckIn = data['type'] == 'in';
-                          final Timestamp timeStamp = data['timestamp'];
-                          final String date = DateFormat(
-                            'dd MMM yyyy',
-                          ).format(timeStamp.toDate());
-                          final String time = DateFormat(
-                            'HH:mm',
-                          ).format(timeStamp.toDate());
-
-                          return Container(
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: ListTile(
-                              leading: Icon(
-                                isCheckIn ? Icons.login : Icons.logout,
-                                color: isCheckIn ? Colors.green : Colors.red,
-                              ),
-                              title: Text(isCheckIn ? "Check In" : "Check Out",
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                              subtitle: Text(date),
-                              trailing: Text(
-                                time,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      // ── Dark Mode Toggle ───────────────────────────
-                      Consumer<ThemeProvider>(
-                        builder: (context, tp, _) {
-                          final uid = context.watch<CurrentUserProvider>().uid;
-                          return Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 8,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 6,
-                              horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? const Color(0xFF2C2C2C)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.grey.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: SwitchListTile(
-                              title: const Text(
-                                'Dark Mode',
-                                style: TextStyle(fontWeight: FontWeight.w500),
-                              ),
-                              secondary: Icon(
-                                tp.isDarkMode
-                                    ? Icons.dark_mode
-                                    : Icons.light_mode,
-                                color: tp.isDarkMode
-                                    ? const Color(0xFFFFD95A)
-                                    : Colors.amber[700],
-                              ),
-                              value: tp.isDarkMode,
-                              onChanged: uid != null
-                                  ? (_) => tp.toggle(uid: uid)
-                                  : null,
-                            ),
-                          );
-                        },
-                      ),
+                      // Recent Activity (last 10, current month)
+                      _buildRecentActivity(sortedDocs),
 
                       const SizedBox(height: 12),
                       GestureDetector(
@@ -549,6 +479,17 @@ class _ProfilePageState extends State<ProfilePage> {
     return FutureBuilder<DocumentSnapshot>(
       future: _userRepository.getUserDocument(uid),
       builder: (context, snapshot) {
+        if (snapshot.hasError || (!snapshot.hasData && snapshot.connectionState != ConnectionState.waiting)) {
+          return const Column(
+            children: [
+              SizedBox(height: 20),
+              Icon(Icons.person, size: 80, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('Failed to load profile',
+                  style: TextStyle(color: Colors.grey)),
+            ],
+          );
+        }
         if (!snapshot.hasData) {
           return const CircularProgressIndicator();
         }
@@ -646,6 +587,95 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildVerticalDivider() {
     return Container(height: 30, width: 1, color: Colors.white30);
   }
+
+  Widget _buildRecentActivity(List<QueryDocumentSnapshot> docs) {
+    const int maxItems = 10;
+    // Filter to current month only
+    final currentMonth = DateFormat('yyyy-MM').format(DateTime.now());
+    final monthDocs = docs
+        .where((doc) {
+          final date = doc['date'] as String?;
+          return date != null && date.startsWith(currentMonth);
+        })
+        .toList();
+    final limitedDocs =
+        monthDocs.length > maxItems ? monthDocs.sublist(0, maxItems) : monthDocs;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Row(
+            children: [
+              const Icon(Icons.history_outlined, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Recent Activity',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              if (monthDocs.length > maxItems)
+                Text(
+                  'Last $maxItems',
+                  style: const TextStyle(fontSize: 12, color: Colors.black45),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (limitedDocs.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.0),
+            child: Text(
+              'No activity this month.',
+              style: TextStyle(color: Colors.grey),
+            ),
+          )
+        else
+          ...limitedDocs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final bool isCheckIn = data['type'] == 'in';
+            final Timestamp timeStamp = data['timestamp'];
+            final String date =
+                DateFormat('dd MMM yyyy').format(timeStamp.toDate());
+            final String time =
+                DateFormat('HH:mm').format(timeStamp.toDate());
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: ListTile(
+                dense: true,
+                leading: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: (isCheckIn ? Colors.green : Colors.red)
+                      .withAlpha((0.15 * 255).round()),
+                  child: Icon(
+                    isCheckIn ? Icons.login : Icons.logout,
+                    size: 16,
+                    color: isCheckIn ? Colors.green : Colors.red,
+                  ),
+                ),
+                title: Text(isCheckIn ? 'Check In' : 'Check Out',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(date, style: const TextStyle(fontSize: 12)),
+                trailing: Text(
+                  time,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            );
+          }),
+      ],
+    );
+  }
 }
 
 /// Displays remaining leave balance for the current employee.
@@ -704,16 +734,16 @@ class _LeaveBalanceCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   _balanceChip(
-                    Icons.warning_amber,
-                    'Emergency',
-                    '${balance['emergency'] ?? 0} days',
-                    Colors.orange,
+                    Icons.star_border,
+                    'Special Leave',
+                    '${balance['special'] ?? 0} used',
+                    Colors.purple,
                   ),
                   const SizedBox(width: 8),
                   _balanceChip(
                     Icons.medical_services,
                     'Sick',
-                    '${balance['sick'] ?? 0} days',
+                    '${balance['sick'] ?? 0} used',
                     Colors.red,
                   ),
                 ],

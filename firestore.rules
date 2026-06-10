@@ -47,5 +47,22 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
+
+    match /shift_assignments/{dateStr} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /overtime_requests/{requestId} {
+      allow read: if isAdmin() || isOwner(resource.data.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /issue_reports/{reportId} {
+      allow read: if isAdmin() || isOwner(resource.data.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
   }
 }
